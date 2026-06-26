@@ -20,6 +20,49 @@ mcp-server/    ← reads all stores, serves agents as MCP prompts
 
 ---
 
+## Architecture
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                        Agent Stores                         │
+│                                                             │
+│  idf-agents-store/        devops-agents-store/    ...       │
+│  ├── design-session/      ├── iac-generator/                │
+│  │   └── agent.md         │   ├── SKILL.md                  │
+│  ├── codebase-archaeology/│   ├── workflow.md               │
+│  │   └── agent.md         │   ├── templates.md              │
+│  └── ...                  │   └── examples.md               │
+└─────────────────┬───────────────────────┬───────────────────┘
+                  │  glob discovery       │ frontmatter parse
+                  ▼                       ▼
+┌─────────────────────────────────────────────────────────────┐
+│                     MCP Server (stdio)                      │
+│                     mcp-server/src/index.ts                 │
+│                                                             │
+│  • Scans all *-agents-store/*/ on startup                   │
+│  • Reads agent.md or SKILL.md (first match wins)            │
+│  • Concatenates supporting *.md into the prompt body        │
+│  • Exposes each agent as a named MCP Prompt                 │
+└────────────────────────┬────────────────────────────────────┘
+                         │ MCP protocol (stdio)
+           ┌─────────────┼─────────────┐
+           ▼             ▼             ▼
+    Claude Code        Cursor     GitHub Copilot
+    (VS Code / CLI)  (agent mode)  (VS Code agent mode)
+```
+
+### Key design decisions
+
+| Decision | Rationale |
+|---|---|
+| **MCP Prompts, not Tools** | Prompts are the right MCP primitive for instruction sets — they inject directly into the conversation as slash commands, with no extra input schema required |
+| **stdio transport** | Works locally without a network port; supported natively by all three tools |
+| **Frontmatter as the agent contract** | `name` and `description` in YAML are the only required fields — everything else is plain markdown, keeping agents easy to write and diff |
+| **Supporting docs concatenated at serve time** | Multi-file agents (e.g. `iac-generator`) keep their docs split for readability but arrive at the tool as a single coherent prompt |
+| **Glob discovery, no registry** | Adding a new agent folder is enough — no config file, no import, no server restart beyond a rebuild |
+
+---
+
 ## Quickstart
 
 **1. Build the MCP server**
