@@ -36,18 +36,29 @@ mcp-server/    ← reads all stores, serves agents as MCP prompts
                   │  glob discovery       │ frontmatter parse
                   ▼                       ▼
 ┌─────────────────────────────────────────────────────────────┐
-│                     MCP Server (stdio)                      │
-│                     mcp-server/src/index.ts                 │
+│                       MCP Server                            │
+│                                                             │
+│  dist/index.js  ← stdio transport  (local / npx)           │
+│  dist/http.js   ← HTTP Streamable  (central team server)    │
 │                                                             │
 │  • Scans all *-agents-store/*/ on startup                   │
 │  • Reads agent.md or SKILL.md (first match wins)            │
 │  • Concatenates supporting *.md into the prompt body        │
 │  • Exposes each agent as a named MCP Prompt                 │
-└────────────────────────┬────────────────────────────────────┘
-                         │ MCP protocol (stdio)
-           ┌─────────────┼─────────────┐
-           ▼             ▼             ▼
-    Claude Code        Cursor     GitHub Copilot
+└──────────┬────────────────────────┬────────────────────────┘
+           │ stdio                  │ HTTP (url config)
+           │ (command config)       │
+           ▼                        ▼
+  ┌─────────────────────┐   ┌──────────────────────┐
+  │  Local / npx use    │   │  Central team server  │
+  │  (Option B)         │   │  (Option A)           │
+  └──────────┬──────────┘   └──────────┬───────────┘
+             │                          │
+             └────────────┬─────────────┘
+                          │ MCP protocol
+           ┌──────────────┼──────────────┐
+           ▼              ▼              ▼
+    Claude Code         Cursor     GitHub Copilot
     (VS Code / CLI)  (agent mode)  (VS Code agent mode)
 ```
 
@@ -56,32 +67,58 @@ mcp-server/    ← reads all stores, serves agents as MCP prompts
 | Decision | Rationale |
 |---|---|
 | **MCP Prompts, not Tools** | Prompts are the right MCP primitive for instruction sets — they inject directly into the conversation as slash commands, with no extra input schema required |
-| **stdio transport** | Works locally without a network port; supported natively by all three tools |
+| **Two transports, one codebase** | `index.ts` (stdio) and `http.ts` (HTTP Streamable) share the same agent loader and server factory — adding a new agent updates both delivery paths automatically |
+| **HTTP Streamable, not SSE** | `StreamableHTTPServerTransport` is the current MCP spec; the older `SSEServerTransport` is deprecated as of SDK 1.x |
 | **Frontmatter as the agent contract** | `name` and `description` in YAML are the only required fields — everything else is plain markdown, keeping agents easy to write and diff |
 | **Supporting docs concatenated at serve time** | Multi-file agents (e.g. `iac-generator`) keep their docs split for readability but arrive at the tool as a single coherent prompt |
 | **Glob discovery, no registry** | Adding a new agent folder is enough — no config file, no import, no server restart beyond a rebuild |
+| **`MCP_AGENTS_ROOT` env var** | Decouples the server binary from the agent files, enabling the npm package to run against any local clone of this repo |
 
 ---
 
 ## Quickstart
 
-**1. Build the MCP server**
+Three ways to connect — pick one. All three expose the same agents via the same MCP prompt names.
+
+### Option A — Central team server (one deploy, whole team)
 
 ```bash
-cd mcp-server
-npm install
-npm run build
+# Build and run locally
+cd mcp-server && npm install && npm run build
+npm run start:http          # listens on http://0.0.0.0:3000/mcp
+
+# Or deploy via Docker (from repo root)
+docker build -t ide-expert-agents-mcp .
+docker run -p 3000:3000 ide-expert-agents-mcp
 ```
 
-**2. Connect to your tool**
+Each developer adds the URL to their tool config — no local install needed:
 
-| Tool | Config file | Server key |
-|---|---|---|
-| Claude Code | `~/.claude/settings.json` | `mcpServers` |
-| Cursor | `~/.cursor/mcp.json` | `mcpServers` |
-| GitHub Copilot (VS Code) | `.vscode/mcp.json` | `servers` |
+```json
+{ "mcpServers": { "ide-expert-agents": { "url": "http://your-server:3000/mcp" } } }
+```
 
-Add the server entry:
+### Option B — npm package (per-developer, no server to maintain)
+
+Publish once to a private npm registry, then each developer runs via `npx`:
+
+```json
+{
+  "mcpServers": {
+    "ide-expert-agents": {
+      "command": "npx",
+      "args": ["-y", "@99x/ide-expert-agents-mcp"],
+      "env": { "MCP_AGENTS_ROOT": "/path/to/ide-expert-agents" }
+    }
+  }
+}
+```
+
+### Local clone (no publish step)
+
+```bash
+cd mcp-server && npm install && npm run build
+```
 
 ```json
 {
@@ -94,9 +131,9 @@ Add the server entry:
 }
 ```
 
-See [mcp-server/README.md](mcp-server/README.md) for tool-specific config snippets.
+See [mcp-server/README.md](mcp-server/README.md) for full per-tool config snippets (Claude Code, Cursor, GitHub Copilot).
 
-**3. Use an agent**
+### Using an agent
 
 In Claude Code: `/mcp__ide-expert-agents__codebase-archaeology`
 

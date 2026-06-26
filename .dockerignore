@@ -1,0 +1,4 @@
+.git/
+.DS_Store
+mcp-server/node_modules/
+mcp-server/dist/

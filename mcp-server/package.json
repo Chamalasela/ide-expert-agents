@@ -1,22 +1,30 @@
 {
-  "name": "ide-expert-agents-mcp",
+  "name": "@99x/ide-expert-agents-mcp",
   "version": "1.0.0",
   "description": "MCP server that exposes all IDE expert agents as prompts — works with Claude Code, Cursor, and GitHub Copilot",
   "type": "module",
+  "files": [
+    "dist/",
+    "README.md"
+  ],
   "bin": {
     "ide-expert-agents-mcp": "dist/index.js"
   },
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && node scripts/postbuild.mjs",
     "start": "node dist/index.js",
-    "dev": "tsx src/index.ts"
+    "start:http": "node dist/http.js",
+    "dev": "tsx src/index.ts",
+    "dev:http": "tsx src/http.ts"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",
+    "express": "^5.2.1",
     "glob": "^13.0.6",
     "gray-matter": "^4.0.3"
   },
   "devDependencies": {
+    "@types/express": "^5.0.6",
     "@types/node": "^22.0.0",
     "tsx": "^4.19.0",
     "typescript": "^5.8.0"
