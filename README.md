@@ -78,47 +78,23 @@ mcp-server/    ← reads all stores, serves agents as MCP prompts
 
 ## Quickstart
 
-Three ways to connect — pick one. All three expose the same agents via the same MCP prompt names.
-
-### Option A — Central team server (one deploy, whole team)
+**1. Build the MCP server**
 
 ```bash
-# Build and run locally
-cd mcp-server && npm install && npm run build
-npm run start:http          # listens on http://0.0.0.0:3000/mcp
-
-# Or deploy via Docker (from repo root)
-docker build -t ide-expert-agents-mcp .
-docker run -p 3000:3000 ide-expert-agents-mcp
+cd mcp-server
+npm install
+npm run build
 ```
 
-Each developer adds the URL to their tool config — no local install needed:
+**2. Connect to your tool**
 
-```json
-{ "mcpServers": { "ide-expert-agents": { "url": "http://your-server:3000/mcp" } } }
-```
+| Tool | Config file | Server key |
+|---|---|---|
+| Claude Code | `~/.claude/settings.json` | `mcpServers` |
+| Cursor | `~/.cursor/mcp.json` | `mcpServers` |
+| GitHub Copilot (VS Code) | `.vscode/mcp.json` | `servers` |
 
-### Option B — npm package (per-developer, no server to maintain)
-
-Publish once to a private npm registry, then each developer runs via `npx`:
-
-```json
-{
-  "mcpServers": {
-    "ide-expert-agents": {
-      "command": "npx",
-      "args": ["-y", "@99x/ide-expert-agents-mcp"],
-      "env": { "MCP_AGENTS_ROOT": "/path/to/ide-expert-agents" }
-    }
-  }
-}
-```
-
-### Local clone (no publish step)
-
-```bash
-cd mcp-server && npm install && npm run build
-```
+Add the server entry:
 
 ```json
 {
@@ -131,9 +107,9 @@ cd mcp-server && npm install && npm run build
 }
 ```
 
-See [mcp-server/README.md](mcp-server/README.md) for full per-tool config snippets (Claude Code, Cursor, GitHub Copilot).
+See [mcp-server/README.md](mcp-server/README.md) for tool-specific config snippets.
 
-### Using an agent
+**3. Use an agent**
 
 In Claude Code: `/mcp__ide-expert-agents__codebase-archaeology`
 
@@ -148,7 +124,7 @@ In Cursor: type `/` and search for the agent name in agent mode.
 | [idf-agents-store](idf-agents-store/README.md) | 9 | Structured software delivery — design, risk, UAT, RCA, process health, and more |
 | [devops-agents-store](devops-agents-store/README.md) | 1 | Infrastructure provisioning and IaC generation |
 | [architect-agents-store](architect-agents-store/README.md) | — | Architecture and system design *(coming soon)* |
-| [coding-agents-store](coding-agents-store/README.md) | — | Code generation and review *(coming soon)* |
+| [coding-agents-store](coding-agents-store/README.md) | 1 | Code quality and targeted improvements — error handling audit |
 | [qa-agents-store](qa-agents-store/README.md) | — | Testing and quality assurance *(coming soon)* |
 | [ux-agents-store](ux-agents-store/README.md) | — | UX design and research *(coming soon)* |
 | [compliance-agents-store](compliance-agents-store/README.md) | — | Security and compliance *(coming soon)* |
