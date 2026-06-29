@@ -128,6 +128,17 @@ Ask the **core** set every run; pull from **extended** as the app and risk profi
 - Secrets store - **Secrets Manager / Key Vault / Secret Manager / Parameter Store / Vault**? How are secrets injected at runtime?
 - Per-environment configuration strategy?
 
+#### Azure AD / Entra ID app registrations — single or dual?
+
+When the app uses Microsoft Entra ID for both frontend authentication (OIDC login) and backend API authorization (JWT validation), ask:
+
+> "Do you need one shared Entra ID app registration for both the frontend and the API, or separate registrations for each?"
+
+- **Single registration** (simpler, common for internal apps): the frontend uses it for the OIDC login flow; the API validates JWTs where `aud = api://<same-client-id>`. One client ID and one client secret to manage. This is the right default unless the team has a specific reason to separate them.
+- **Dual registrations** (more isolation): the frontend has its own app reg for the login flow; the API has a separate app reg that exposes a scope (e.g. `access_as_user`); the frontend requests that scope to get a token accepted by the API. Required when the API must be callable by multiple different client apps, or when separate secret rotation is a compliance requirement.
+
+Record the answer as a `DEC-` entry. If single: use one `azureAdClientId` parameter throughout the IaC. If dual: use `azureAdClientIdFrontend` and `azureAdClientIdApi` as separate parameters.
+
 ### H. Reliability, security & compliance
 - Target availability/SLA (e.g. 99.9%)? RTO / RPO for DR?
 - Compliance frameworks in scope - **SOC 2 / HIPAA / PCI-DSS / GDPR / ISO 27001 / none**?
