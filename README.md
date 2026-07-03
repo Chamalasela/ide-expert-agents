@@ -115,6 +115,8 @@ In Cursor: type `/` and search for the agent name in agent mode.
 
 ## Adding a new agent
 
+> **⚠️ Customer IP notice:** Agents and skills in this repository are shared publicly across teams. Contributors must ensure content is **generic and reusable** — do not include any customer-specific data, proprietary business logic, confidential architecture details, credentials, or other protected intellectual property belonging to a 99x customer. If an agent was inspired by client work, generalize it (naming, examples, domain specifics) before contributing it here. When in doubt, leave it out and check with your engagement lead.
+
 1. Create a folder in the appropriate `*-agents-store/`.
 2. Add an `agent.md` (or `SKILL.md`) with at minimum:
 
