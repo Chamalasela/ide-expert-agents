@@ -6,10 +6,26 @@ import { fileURLToPath } from "url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-// When installed via npx, set MCP_AGENTS_ROOT to the local repo clone.
-// When running from the repo directly, the default resolves correctly.
+// Resolution order:
+// 1. MCP_AGENTS_ROOT — explicit override (team clone, Docker image root, custom agent set).
+// 2. A real repo checkout two directories above dist/ (local clone / Option A / Option C).
+// 3. dist/agents-bundle/ — a copy of every *-agents-store/ baked in at publish time
+//    (see scripts/postbuild.mjs), making `npx @99x/ide-expert-agents-mcp` self-contained
+//    with no local clone required (Option B).
 export function getAgentsRoot(): string {
-  return process.env.MCP_AGENTS_ROOT ?? path.resolve(__dirname, "../..");
+  if (process.env.MCP_AGENTS_ROOT) return process.env.MCP_AGENTS_ROOT;
+
+  const repoRoot = path.resolve(__dirname, "../..");
+  if (glob.sync("*-agents-store", { cwd: repoRoot }).length > 0) {
+    return repoRoot;
+  }
+
+  const bundledRoot = path.resolve(__dirname, "agents-bundle");
+  if (fs.existsSync(bundledRoot)) {
+    return bundledRoot;
+  }
+
+  return repoRoot;
 }
 
 export interface Agent {

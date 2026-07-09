@@ -95,19 +95,19 @@ Once deployed, each developer adds the server URL to their tool config — no `n
 
 ## Option B — npx / npm package (per-developer, no server required)
 
-Publish once to npm (private registry or GitHub Packages). Each developer runs the server locally via `npx` — no clone, no build step, no Docker needed.
+Publish once to npm (private registry or GitHub Packages). Each developer runs the server locally via `npx` — **no clone, no build step, no Docker, and no local agent files needed.** `npm run build` bakes a copy of every `*-agents-store/` into `dist/agents-bundle/` (see `scripts/postbuild.mjs`), so the published package is fully self-contained.
 
 ### Publish
 
 ```bash
 cd mcp-server
-npm run build
+npm run build     # also bundles the agent stores into dist/agents-bundle/
 npm publish --access restricted   # private registry
 ```
 
 ### Developer config
 
-Set `MCP_AGENTS_ROOT` to the path of a local clone of this repository so the server knows where to find the agents.
+No `MCP_AGENTS_ROOT` needed — the package ships its own copy of the agents.
 
 **Claude Code** — `~/.claude/settings.json`:
 ```json
@@ -115,10 +115,7 @@ Set `MCP_AGENTS_ROOT` to the path of a local clone of this repository so the ser
   "mcpServers": {
     "ide-expert-agents": {
       "command": "npx",
-      "args": ["-y", "@99x/ide-expert-agents-mcp"],
-      "env": {
-        "MCP_AGENTS_ROOT": "/path/to/ide-expert-agents"
-      }
+      "args": ["-y", "@99x/ide-expert-agents-mcp"]
     }
   }
 }
@@ -130,10 +127,7 @@ Set `MCP_AGENTS_ROOT` to the path of a local clone of this repository so the ser
   "mcpServers": {
     "ide-expert-agents": {
       "command": "npx",
-      "args": ["-y", "@99x/ide-expert-agents-mcp"],
-      "env": {
-        "MCP_AGENTS_ROOT": "/path/to/ide-expert-agents"
-      }
+      "args": ["-y", "@99x/ide-expert-agents-mcp"]
     }
   }
 }
@@ -146,14 +140,15 @@ Set `MCP_AGENTS_ROOT` to the path of a local clone of this repository so the ser
     "ide-expert-agents": {
       "type": "stdio",
       "command": "npx",
-      "args": ["-y", "@99x/ide-expert-agents-mcp"],
-      "env": {
-        "MCP_AGENTS_ROOT": "/path/to/ide-expert-agents"
-      }
+      "args": ["-y", "@99x/ide-expert-agents-mcp"]
     }
   }
 }
 ```
+
+> **Using a fork or private agent set instead of the bundled agents?** Set `MCP_AGENTS_ROOT` to a local clone's path in the `env` block above — it always takes priority over the bundled copy. This is also how to pick up agent changes without waiting for a new npm publish.
+>
+> **Keeping the published package in sync:** the bundle is a snapshot taken at `npm run build` time — republish (`npm version` + `npm publish`) whenever agents change, the same as any other npm package.
 
 ---
 
@@ -186,7 +181,7 @@ Then use the local path in your tool config:
 
 | Variable | Default | Description |
 |---|---|---|
-| `MCP_AGENTS_ROOT` | Two directories above `dist/` | Path to the repo root where `*-agents-store/` folders are located |
+| `MCP_AGENTS_ROOT` | *(unset)* | Explicit override pointing at a directory containing `*-agents-store/` folders. If unset, the server looks for a real repo checkout two directories above `dist/`, then falls back to the bundled `dist/agents-bundle/` shipped in the npm package |
 | `PORT` | `3000` | HTTP port (Option A only) |
 
 ---
@@ -196,7 +191,7 @@ Then use the local path in your tool config:
 1. Create a folder in the appropriate `*-agents-store/` directory.
 2. Add an `agent.md` (or `SKILL.md`) with YAML frontmatter containing `name` and `description`.
 3. Rebuild: `npm run build`.
-4. For Option A: redeploy. For Option B: publish a new version. For local clone: restart the MCP connection.
+4. For Option A: redeploy (rebuild the image — new stores are picked up automatically, no Dockerfile edit needed). For Option B: publish a new version. For local clone: restart the MCP connection.
 
 ---
 
