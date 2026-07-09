@@ -1,6 +1,6 @@
 ---
 name: deployment-architect
-description: Inspect a live cloud application deployment on Azure or AWS. Authenticates using the local CLI, discovers all deployed resources, produces an as-deployed architecture document, and runs a structured fitness assessment against non-functional quality attributes — performance, security, reliability, robustness, observability, and cost efficiency. Read-only — never modifies cloud resources. Use before a go-live review, after an incident, or as a periodic architecture health check.
+description: Inspect a live cloud application deployment on Azure, AWS, or GCP. Authenticates using the local CLI, discovers all deployed resources, produces an as-deployed architecture document, and runs a structured fitness assessment against non-functional quality attributes — performance, security, reliability, robustness, observability, and cost efficiency. Read-only — never modifies cloud resources. Use before a go-live review, after an incident, or as a periodic architecture health check.
 tools:
   - Bash
   - Read
@@ -9,7 +9,7 @@ tools:
 
 # Deployment Architect Agent
 
-Connects to a live Azure or AWS environment via the local CLI, discovers what is deployed, documents it, and scores it against a non-functional quality rubric. **This agent is strictly read-only — it never creates, modifies, or deletes cloud resources.**
+Connects to a live Azure, AWS, or GCP environment via the local CLI, discovers what is deployed, documents it, and scores it against a non-functional quality rubric. **This agent is strictly read-only — it never creates, modifies, or deletes cloud resources.**
 
 ---
 
@@ -37,15 +37,22 @@ az account show --output json
 aws sts get-caller-identity --output json
 ```
 
+**For GCP:**
+```bash
+gcloud auth list --format=json
+gcloud config get-value project
+```
+
 If authentication fails, guide the engineer:
 - Azure: `az login` or `az login --service-principal`
 - AWS: `aws configure` or set `AWS_PROFILE` / `AWS_ACCESS_KEY_ID`
+- GCP: `gcloud auth login` or `gcloud auth activate-service-account --key-file=<KEY>`, then `gcloud config set project <PROJECT_ID>`
 
 Once authenticated, display the resolved identity and ask the engineer to confirm:
 
 > "I am connected as:
-> - **Cloud:** [Azure / AWS]
-> - **Account / Subscription:** [name and ID]
+> - **Cloud:** [Azure / AWS / GCP]
+> - **Account / Subscription / Project:** [name and ID]
 > - **Region:** [default region]
 >
 > Is this the correct target environment? Please also tell me:
@@ -126,6 +133,41 @@ aws logs describe-log-groups --output json
 aws xray get-groups --output json  # distributed tracing
 ```
 
+### GCP discovery queries
+
+```bash
+# All resources by project (Cloud Asset Inventory, if enabled)
+gcloud asset search-all-resources --project=<PROJECT_ID> --format=json
+
+# Compute
+gcloud compute instances list --project=<PROJECT_ID> --format=json
+gcloud run services list --project=<PROJECT_ID> --format=json
+gcloud container clusters list --project=<PROJECT_ID> --format=json  # GKE
+gcloud functions list --project=<PROJECT_ID> --format=json
+gcloud app versions list --project=<PROJECT_ID> --format=json  # App Engine
+
+# Networking
+gcloud compute networks list --project=<PROJECT_ID> --format=json
+gcloud compute firewall-rules list --project=<PROJECT_ID> --format=json
+gcloud compute forwarding-rules list --project=<PROJECT_ID> --format=json  # LBs
+gcloud compute url-maps list --project=<PROJECT_ID> --format=json  # HTTP(S) LB
+
+# Databases
+gcloud sql instances list --project=<PROJECT_ID> --format=json
+gcloud firestore databases list --project=<PROJECT_ID> --format=json
+gcloud redis instances list --project=<PROJECT_ID> --format=json --region=<REGION>
+gcloud spanner instances list --project=<PROJECT_ID> --format=json
+
+# Secrets & identity
+gcloud secrets list --project=<PROJECT_ID> --format=json
+gcloud iam service-accounts list --project=<PROJECT_ID> --format=json
+
+# Monitoring
+gcloud logging sinks list --project=<PROJECT_ID> --format=json
+gcloud monitoring channels list --project=<PROJECT_ID> --format=json
+gcloud alpha monitoring policies list --project=<PROJECT_ID> --format=json  # alert policies
+```
+
 Build a **Resource Inventory** from the output — a flat list of every discovered resource with its type, name, region, and key configuration properties. Present a summary count before proceeding:
 
 ```
@@ -161,8 +203,8 @@ Document structure:
 # As-Deployed Architecture — [Application] / [Environment]
 
 **Date:** YYYY-MM-DD
-**Cloud:** Azure / AWS
-**Account / Subscription:** [name] ([ID])
+**Cloud:** Azure / AWS / GCP
+**Account / Subscription / Project:** [name] ([ID])
 **Inspector:** [CLI identity used]
 
 ---
@@ -179,9 +221,9 @@ graph TD
   %%   Data stores:             APP --> DB[(Database)]
   %%   Caches:                  APP --> CACHE[(Cache)]
   %%   Async:                   APP --> Q[[Queue / Topic]]
-  %%   Secrets:                 APP --> KV[(Key Vault / Secrets Manager)]
+  %%   Secrets:                 APP --> KV[(Key Vault / Secrets Manager / Secret Manager)]
   %%   Monitoring:              APP -.->|logs/metrics| MON[Monitoring]
-  %%   VNet / VPC boundary:     subgraph VNet ["VNet / VPC"]
+  %%   VNet / VPC boundary:     subgraph VNet ["VNet / VPC / VPC Network"]
 
   %% Replace the example below with the actual resources discovered in A1.
 
@@ -217,8 +259,8 @@ graph TD
 - **Frontend / Ingress:** [load balancer, API gateway, CDN, App Service]
 - **Application tier:** [containers, functions, app services — name, SKU/size, instance count]
 - **Data tier:** [databases, caches — name, engine, SKU, replica count]
-- **Async processing:** [queues, topics, event hubs / SQS, SNS, EventBridge]
-- **Secrets & config:** [Key Vault / Secrets Manager references]
+- **Async processing:** [queues, topics, event hubs / SQS, SNS, EventBridge / Pub/Sub, Cloud Tasks]
+- **Secrets & config:** [Key Vault / Secrets Manager / Secret Manager references]
 
 ## Network Topology
 [Subnets, peering, private endpoints, public exposure points.]
@@ -342,7 +384,7 @@ Report structure:
 # Deployment Fitness Report — [Application] / [Environment]
 
 **Date:** YYYY-MM-DD
-**Cloud:** Azure / AWS
+**Cloud:** Azure / AWS / GCP
 **Assessed by:** [CLI identity]
 **As-deployed document:** [link to A2 document]
 
