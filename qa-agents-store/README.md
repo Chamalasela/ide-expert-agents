@@ -11,6 +11,7 @@ All agents in this store are served via the repository's MCP server. See [mcp-se
 | Agent | Prompt name | When to use |
 |---|---|---|
 | **OWASP Security Scanner** | `owasp-security-scanner` | When you want a static code scan against OWASP Top 10 (2025) and/or OWASP Top 25 Parameters, with the latest standards fetched live from owasp.org. You choose which scan(s) to run; the agent reports severity-ranked findings with evidence — it does not edit code |
+| **Bug Drafter** | `bug-drafter` | When you want to turn a conversational bug description (plus an optional screenshot) into a structured report and file it as an Azure DevOps Bug or a GitHub issue, with severity set. Uses the `az`/`gh` CLIs already authenticated on your machine — no credentials are stored by the agent. Waits for explicit approval before creating anything |
 
 ---
 
